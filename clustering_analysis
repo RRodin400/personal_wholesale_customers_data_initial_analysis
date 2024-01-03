@@ -1,0 +1,128 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import DBSCAN, KMeans  #sklearn (aka scikit-learn) = the library, cluster is the sublibrary, DSCAN and k-means are classes in the sublibrary 
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score #will use to validate the DBSCAN clustering results
+from scipy.cluster import hierarchy
+
+#load the dataset
+data = pd.read_csv("Wholesale customers data.csv") 
+# Load the data from the file 'Wholesale customers data.csv' in a pandas dataframe
+
+#print the beginning of the pandas dataframe so the user can visualize the imported data better
+print("The dataset prior to preprocessing looks like the following: \n", data.head())
+
+#Preprocessing:
+#dropping the first 2 columns as they are more of a label 
+dataForAnalysis = data.drop(['Channel', 'Region'], axis=1) 
+#axis = 1 means to drop a column (vs a row) based on the specified labels given in the 1st parameter; specifies drop will be a column-wise operation
+
+#normalizing the data
+normalized = StandardScaler() #creates an instances from the standardscaler class from the sklearn library; will use it in the next line of code
+X_noramlized = normalized.fit_transform(dataForAnalysis) #For reach value of each feature: subtracts the mean of feature from each value and then divided it by the standard deviation of the feature
+#line above is applied so that each feature will now have a mean of 0 and a standard devation of 1, helps ensure all features contribute equally to the analysis regardless of their individual scales
+#aka features that have larger scales will not impact the clustering more, because larger numbers = could mean larger distances per points
+
+#testing Algorithms of clustering:
+
+
+#-----------------------------------------------------------------------
+#1. DBSCAN
+#apply the DBSCAN algo
+dbscanInstance = DBSCAN(eps=5, min_samples=5) #creates an instance of the dbscan alogirthm
+#eps = epsilon; the radius of the neighbourhood; aka the max distance 2 points where 1 is still considered the neighbour of another
+#min_samples = # of neighbours to be considered a core point 
+
+print("\nDBSCAN algo \noptimizing esp for a min_samples size of 5: ")
+import numpy as np
+eps_values = np.arange(0.1, 1.0, 0.1) #found out how to do via googling. can't use range() bc range doesn't work for floats. source: https://pynative.com/python-range-for-float-numbers/
+
+for eps in eps_values:
+    dbscanInstance = DBSCAN(eps=eps, min_samples=5)
+    dataForAnalysis['Clustering via DBSCAN'] = dbscanInstance.fit_predict(X_noramlized)
+    num_of_clusters = dataForAnalysis['Clustering via DBSCAN'].nunique() - 1
+    
+    print("For eps=", eps, ":")
+    print("Number of clusters generated, besides noise, is: ", num_of_clusters) # minus 1 because of noise
+    if num_of_clusters > 1: #bc silouette score can only be calculated if we have more than 1 cluster
+        silhouette_avg = silhouette_score(X_noramlized, dataForAnalysis['Clustering via DBSCAN'])
+        print("Silhouette Score: ", round(silhouette_avg, 2), "\n")
+    else:
+        print("No relevant", "\n")
+
+print("From the above silhouette_scores, it appears DBSCAN is not a very good algo for this dataset")
+
+print("Visualizing the DBSCAN resulting clusters (as done below), won't be very accurate since DBSCAN is preforming high dimension\
+      \nclustering but we are displaying the results on a 2D plane (displaying just 2 of the 6 features).") #so maybe comment out this codeprint("\nDBSCAN algo \noptimizing esp for a min_samples size of 5: ")
+
+#---------------------------------------------------------
+#2.testing the k means algo on the normalized dataset
+#trying to find the elbow to optimize the number of clusters, k for the dataset
+SSE = []
+
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, n_init = 20) #create a kmeans instance with K number of clusters
+    #random_state = 4 = allows for a random seed generator number to be added so that the data can be reproduced if needed. Recall the randomness in the algorithm is a result of the initial centroid points
+    #n_init = 20 means the kmeans algo will be run 20 times each time with a different seed for the centroid randomization. The model with the lowest SSD will be chosen as the final model
+    kmeans.fit_predict(X_noramlized) #fit the model to the normalized dataset
+    SSE.append(kmeans.inertia_) 
+
+#plot the elbow
+plt.figure(figsize=(10,10))
+plt.plot(range(1, 11), SSE, marker='o') #creates a line graph aka the datapoints are all connected via 1 line. the first 2 parameters are using arrays or some kind of iterable to rep the x axis of the datapoints and the y axis of the datapoints
+plt.title('K vs. SSE')
+plt.xlabel('K')
+plt.ylabel('Sum of Squared Errors (SSE)')
+plt.show()
+
+print("It appears from the 'k vs. SSE plot' that the best k value is 5. Therefore, k=5 will be used for running the K-means algo on the Wholesale Customer dataset.")
+
+#running k-means algo with k set to 5 clusters
+num_clusters = 5
+kmeansInstance = KMeans(n_clusters = num_clusters, n_init = 20)
+##random_state = 4 = allows for a random seed generator number to be added so that the data can be reproduced if needed. Recall the randomness in the algorithm is a result of the initial centroid points
+#n_init = 20 means the kmeans algo will be run 20 times each time with a different seed for the centroid randomization. The model with the lowest SSD will be chosen as the final model
+
+data['Clustering via K-Means'] = kmeansInstance.fit_predict(X_noramlized)
+# data['Clustering via K-Means'] = a new column being added to the dataframe to store the clustering results
+# fit_predict() recall is a standard way of fitting a model to the data
+
+# Calculate the SSE
+sseForK5 = kmeans.inertia_
+print("The sum of squared errors is: ", round(sseForK5, 2)) #rounding SSE value to 2
+print("This SSE value seems very high for the normalized data, suggesting that K-means is likely not a good method for this dataset")
+
+#------------------------------------------------------------
+#3. hierarical clustering
+hcInfo = hierarchy.average(X_noramlized) # average = calculates inter-cluster similarity by using the Group Average method (aka it takes the average of every pair of points within 2 clusters, averages those distances and merges the two clusters with the smallest average)
+hcInfo2 = hierarchy.linkage(X_noramlized, method='single') # min method
+hcInfo3 = hierarchy.linkage(X_noramlized, method='complete') #max method
+
+
+#plot the dendrogram
+#aside: how does the dendrogram know which figure to put its image in? A: it uses the "current" figure, which is either the last one created or the last one specified by plt.figure()
+
+plt.figure(figsize=(10, 7))  
+plt.title("Dendrograms - Average method") 
+dn = hierarchy.dendrogram(hcInfo) #average method
+
+plt.figure(figsize=(10, 7)) 
+plt.title("Dendrograms - Min method") 
+dn2 = hierarchy.dendrogram(hcInfo2) #min method 
+
+plt.figure(figsize=(10, 7))  
+plt.title("Dendrograms - Max method") 
+dn3 = hierarchy.dendrogram(hcInfo3) #max method 
+
+
+#to get the final clustering labels. will try k = 4 or k = 6 as this is what the dendrograms naturally tell us to use, but actually chose to use 3 since validation was higher
+k = 5 #want a maximum of 4 clusters
+cLabels = hierarchy.fcluster(hcInfo, k, criterion = 'maxclust')  #fcluster assigns cluster labels based on a hierarchical clustering linkage matrix, hcInfo
+#criterion = 'maxclust' tells python not to exceed 5 clusters
+
+#dataForAnalysis = pd.concat((dataForAnalysis, pd.DataFrame(cLabels, columns=['Labels via Hierarchy'])), axis=1)
+#Concatenates the original DataFrame (dataForAnalysis) with a new DataFrame containing the cluster labels by adding a new column named 'Labels via Hierarchy' to the original DataFrame.
+#found similar code online and used that to make the above line 
+
+silhouette_avg = silhouette_score(X_noramlized, cLabels)
+print("Silhouette Score using a hierarical clustering Average method: ", round(silhouette_avg, 2))
