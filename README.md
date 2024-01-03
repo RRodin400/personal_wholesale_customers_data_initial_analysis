@@ -32,7 +32,7 @@ via the silhouette score.
 
 
 
-References
+# References
 
 [1] = https://archive.ics.uci.edu/dataset/292/wholesale+customers
 
