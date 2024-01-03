@@ -33,6 +33,7 @@ via the silhouette score.
 
 
 References
+
 [1] = https://archive.ics.uci.edu/dataset/292/wholesale+customers
 
 [2] = Dr. Elodie Lugez CPS803/8318 Machine Learning Fall 2023 Class Notes
