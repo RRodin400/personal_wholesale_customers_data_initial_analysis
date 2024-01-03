@@ -34,8 +34,12 @@ via the silhouette score.
 
 References
 [1] = https://archive.ics.uci.edu/dataset/292/wholesale+customers
+
 [2] = Dr. Elodie Lugez CPS803/8318 Machine Learning Fall 2023 Class Notes
+
 [3] = https://shritam.medium.com/how-dbscan-algorithm-works-2b5bef80fb3
+
 [4] = https://www.semanticscholar.org/paper/An-Efficient-Algorithm-for-Density-Based-Subspace-LakshmiMadhuri/f93298e163b368c2e77500f77cea260dbdff8629
+
 [5] = https://www.reneshbedre.com/blog/anova.html
 
